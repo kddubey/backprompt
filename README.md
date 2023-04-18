@@ -1,9 +1,9 @@
 # backprompt
 
-<img src="meme.jpg" alt="meme" width="300"/>
+<img src="meme.jpg" alt="meme" width="400"/>
 
-Toy project which will provide a data structure which allows a user to dynamically
-construct prompts while avoiding repeated computations.
+Data structure which allows a user to dynamically construct prompts while avoiding
+repeated computations. It does this by storing stuff.
 
 It would be cool if this idea could be used to create a prompt representation database.
 A key is the (text, model and weights ID, tokenizer ID, children) and the value is the
