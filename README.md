@@ -51,12 +51,12 @@ YouTube video](https://www.youtube.com/watch?v=kCc8FmEb1nY)), then you know how
 `backprompt` works :-)
 
 Analogies:
-  - (backprop &rarr; "intermediate" gradient of a function)<br>
-    (`backprompt` &rarr; attention block keys and values).
-  - (backprop &rarr; gradient of a function)<br>
-    (`backprompt` &rarr; token logits).
-  - (backprop &rarr; chain rule)<br>
-    (`backprompt` &rarr; tensor concatenation).
+  - backprop &rarr; "intermediate" gradient of a function<br>
+    `backprompt` &rarr; attention block keys and values.
+  - backprop &rarr; gradient of a function<br>
+    `backprompt` &rarr; token logits.
+  - backprop &rarr; chain rule<br>
+    `backprompt` &rarr; tensor concatenation.
 
 TODO: graph visualization
 
