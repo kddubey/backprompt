@@ -13,6 +13,11 @@ def _call_model_given_past(
     out_past: Union[CausalLMOutputWithCrossAttentions, None],
     text: str,
 ) -> tuple[BatchEncoding, CausalLMOutputWithCrossAttentions]:
+    if not tokenizer.padding_side == "right":
+        raise ValueError(
+            "Gotta use right padding to ensure position IDs are correct. "
+            "Run tokenizer.padding_side = 'right' if sensible."
+        )
     encoding: BatchEncoding = tokenizer([text], return_tensors="pt", padding=True).to(
         model.device
     )
@@ -66,7 +71,7 @@ class Text:
         self.string = string
         self.model_and_tokenizer = model_and_tokenizer
         self.model_repr: tuple[BatchEncoding, CausalLMOutputWithCrossAttentions] = None
-        ## internal variables used for autograd graph construction
+        ## internal variables used for Text graph construction
         self._forward = lambda: None  ## TODO: replace w/ partial'd model call?
         self._prev = _prev
 
@@ -102,6 +107,7 @@ class Text:
 
         build_topo(self)
 
+        ## Initialize the root
         if topo[0].model_repr is None:
             topo[0].model_repr = _call_model_given_past(
                 *self.model_and_tokenizer,
@@ -125,33 +131,3 @@ class Text:
             string_shown = self.string[:start] + joiner + self.string[-end:]
         string_shown = repr(string_shown)  ## handle single and double quotes
         return f"{self.__class__.__name__}({string_shown})"
-
-
-from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch
-
-gpt2 = AutoModelForCausalLM.from_pretrained("gpt2")
-tokenizer = AutoTokenizer.from_pretrained("gpt2")
-tokenizer.pad_token = tokenizer.eos_token
-model_and_tokenizer = (gpt2, tokenizer)
-from engine import Text
-
-context = Text("context", model_and_tokenizer)
-request1 = Text(" a b", model_and_tokenizer)
-request2 = Text(" c d", model_and_tokenizer)
-
-cr1 = context + request1
-cr1.backward()
-cr1.model_repr[1].logits
-
-with torch.no_grad():
-    out1 = gpt2(**tokenizer(cr1.string, return_tensors="pt"))
-assert torch.allclose(out1.logits[0, -2:], cr1.model_repr[1].logits[0, -2:])
-
-cr12 = cr1 + request2
-cr12.backward()
-
-cr12.model_repr[1].logits
-with torch.no_grad():
-    out12 = gpt2(**tokenizer(cr12.string, return_tensors="pt"))
-assert torch.allclose(out12.logits[0, -2:], cr12.model_repr[1].logits[0, -2:])
