@@ -6,20 +6,7 @@ from transformers import BatchEncoding, GPT2Model, GPT2Tokenizer
 from transformers.modeling_outputs import CausalLMOutputWithCrossAttentions
 
 
-def _cat_encodings(
-    encoding_past: BatchEncoding, encoding: BatchEncoding
-) -> BatchEncoding:
-    """
-    Horizontally concatenate input IDs and the attention mask.
-    """
-    input_ids = torch.cat((encoding_past.input_ids, encoding.input_ids), dim=1)
-    attention_mask = torch.cat(
-        (encoding_past.attention_mask, encoding.attention_mask), dim=1
-    )
-    return BatchEncoding({"input_ids": input_ids, "attention_mask": attention_mask})
-
-
-def call_model_given_past(
+def _call_model_given_past(
     model: GPT2Model,
     tokenizer: GPT2Tokenizer,
     encoding_past: Union[BatchEncoding, None],
@@ -58,7 +45,10 @@ def call_model_given_past(
             past_key_values=out_past.past_key_values,
             position_ids=position_ids,
         )
-    encoding = _cat_encodings(encoding_past, encoding)
+    ## Concatenate the encodings for future model calls
+    encoding = BatchEncoding(
+        {key: torch.cat((encoding_past[key], encoding[key]), dim=1) for key in encoding}
+    )
     return encoding, out
 
 
@@ -88,7 +78,7 @@ class Text:
 
         def _forward():
             if out.model_repr is None:
-                out.model_repr = call_model_given_past(
+                out.model_repr = _call_model_given_past(
                     *self.model_and_tokenizer,
                     *self.model_repr,
                     other.string,
@@ -113,7 +103,7 @@ class Text:
         build_topo(self)
 
         if topo[0].model_repr is None:
-            topo[0].model_repr = call_model_given_past(
+            topo[0].model_repr = _call_model_given_past(
                 *self.model_and_tokenizer,
                 encoding_past=None,
                 out_past=None,
@@ -122,16 +112,46 @@ class Text:
         for text in topo:
             text._forward()
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
+        ## middle-truncate self.string if it's too long (co-written by ChatGPT)
         max_length = 20
         joiner = " ... "
         if len(self.string) <= max_length:
             string_shown = self.string
         else:
-            ## middle-truncate self.string (co-written by ChatGPT)
             truncate_len = max_length - len(joiner)
             start = truncate_len // 2
             end = start + len(joiner)
             string_shown = self.string[:start] + joiner + self.string[-end:]
         string_shown = repr(string_shown)  ## handle single and double quotes
         return f"{self.__class__.__name__}({string_shown})"
+
+
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+
+gpt2 = AutoModelForCausalLM.from_pretrained("gpt2")
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
+tokenizer.pad_token = tokenizer.eos_token
+model_and_tokenizer = (gpt2, tokenizer)
+from engine import Text
+
+context = Text("context", model_and_tokenizer)
+request1 = Text(" a b", model_and_tokenizer)
+request2 = Text(" c d", model_and_tokenizer)
+
+cr1 = context + request1
+cr1.backward()
+cr1.model_repr[1].logits
+
+with torch.no_grad():
+    out1 = gpt2(**tokenizer(cr1.string, return_tensors="pt"))
+assert torch.allclose(out1.logits[0, -2:], cr1.model_repr[1].logits[0, -2:])
+
+cr12 = cr1 + request2
+cr12.backward()
+
+cr12.model_repr[1].logits
+with torch.no_grad():
+    out12 = gpt2(**tokenizer(cr12.string, return_tensors="pt"))
+assert torch.allclose(out12.logits[0, -2:], cr12.model_repr[1].logits[0, -2:])
