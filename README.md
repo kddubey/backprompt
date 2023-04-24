@@ -58,7 +58,7 @@ print(texts[-1].string)
 # Hello there. General Kenobi...
 
 # Get next-token logits by calling every text obj
-# The punchline is that you don't have to worry about repeated computation :-)
+# The punchline is that you don't have to worry about repeated computation
 for text in texts:
     text()
 
