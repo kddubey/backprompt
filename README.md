@@ -32,7 +32,38 @@ grandpa knows how to do :-)
 
 ## Usage
 
-TODO: perhaps the API endpoint classification problem 
+See the notebook
+[`demos/minimal_example.ipynb`](https://github.com/kddubey/backprompt/blob/main/demos/minimal_example.ipynb)
+for a more realistic use case. Here's a toy demo:
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from backprompt import Text
+
+# Locally load a GPT model and its tokenizer
+model_name = 'gpt2'
+model = AutoModelForCausalLM.from_pretrained(model_name)
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+mt = (model, tokenizer)
+
+# Wrap strings in Text and construct them via concatenation
+context = Text('Hello there.', mt)
+choices = [Text(' Senator', mt), Text(' General', mt)]
+endings = [Text(' Amidala', mt), Text(' Kenobi...', mt)]
+
+texts = [context + choice + ending for choice in choices for ending in endings]
+print(texts[-1].string)
+# Hello there. General Kenobi...
+
+# Get next-token logits by calling every text obj
+# The punchline is that you don't have to worry about repeated computation :-)
+for text in texts:
+    text()
+
+texts[-1].model_repr[1].logits[:, -1, :]
+```
 
 
 ## Installation
@@ -75,19 +106,20 @@ pytest
 <details>
 <summary>Research</summary>
 
-- [ ] Demonstrate time-savings, compute memory costs
 - [ ] What's the computational complexity of using past keys and values wrt # tokens?
-- [ ] What's it gonna take to create a DB?
+- [ ] What's it gonna take to create a DB? It'd be (a non-character-level) trie with a
+  key-value interface
 
 </details>
 
 <details>
 <summary>Code</summary>
 
-- [ ] Test
+- [ ] Expand tests
+  - [ ] More autoregressive LMs
+  - [ ] More string breakdowns
 - [ ] Graph visualization
 - [ ] Allow for frozen representations / custom independencies in the graph
-- [ ] Flesh out README
 - [ ] Batching
 - [ ] Eager mode
 - [ ] `ModelRepr` dataclass for convenience

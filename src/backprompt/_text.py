@@ -59,7 +59,7 @@ def _call_model_given_past(
 
 class Text:
     """
-    Stores a single piece of text and its past keys and values.
+    Stores a string and its past.
     """
 
     def __init__(
@@ -68,6 +68,8 @@ class Text:
         model_and_tokenizer: tuple[GPT2Model, GPT2Tokenizer],
         _prev=(),
     ):
+        if not isinstance(string, str):
+            raise TypeError(f"string must be a string. Got {type(string)}")
         self.string = string
         self.model_and_tokenizer = model_and_tokenizer
         self.model_repr: tuple[BatchEncoding, CausalLMOutputWithCrossAttentions] = None
@@ -76,7 +78,8 @@ class Text:
         self._prev = _prev
 
     def __add__(self, other):
-        other = other if isinstance(other, Text) else Text(other)
+        if not isinstance(other, Text):
+            other = Text(other, self.model_and_tokenizer)
         out = Text(
             self.string + other.string, self.model_and_tokenizer, _prev=(self, other)
         )
@@ -93,7 +96,7 @@ class Text:
 
         return out
 
-    def backward(self):
+    def __call__(self):
         # topological order all of the children in the graph
         topo: list[Text] = []
         visited = set()
@@ -120,7 +123,7 @@ class Text:
 
     def __repr__(self) -> str:
         ## middle-truncate self.string if it's too long (co-written by ChatGPT)
-        max_length = 20
+        max_length = 30
         joiner = " ... "
         if len(self.string) <= max_length:
             string_shown = self.string

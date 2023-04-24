@@ -1,5 +1,5 @@
 """
-Unit tests `backprompt.engine.Text` by comparing its outputs to those from plain model
+Unit tests `backprompt.Text` by comparing its outputs to those from plain model
 calls.
 TODO: expand
 """
@@ -10,7 +10,7 @@ import pytest
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from backprompt.engine import Text
+from backprompt import Text
 
 
 @pytest.fixture(scope="module")
@@ -47,13 +47,13 @@ def model_and_tokenizer(model, tokenizer):
     return model, tokenizer
 
 
-def test_backward(model_and_tokenizer, atol):
-    context = Text("a", model_and_tokenizer)
-    request1 = Text(" b c", model_and_tokenizer)
-    request2 = Text(" d e", model_and_tokenizer)
+def test___call__(model_and_tokenizer, atol):
+    context = Text("a b c", model_and_tokenizer)
+    request1 = Text(" d e", model_and_tokenizer)
+    request2 = Text(" 1 2", model_and_tokenizer)
 
     cr1 = context + request1
-    cr1.backward()
+    cr1()
     cr1.model_repr[1].logits
 
     model, tokenizer = model_and_tokenizer
@@ -64,7 +64,7 @@ def test_backward(model_and_tokenizer, atol):
     )
 
     cr12 = cr1 + request2
-    cr12.backward()
+    cr12()
 
     cr12.model_repr[1].logits
     with torch.no_grad():
