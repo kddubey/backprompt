@@ -11,8 +11,9 @@ prompts while avoiding repeated LLM computations.
 GPT-2 models from HuggingFace. It doesn't try to be all that useful.
 
 It would be cool if this idea could be used to create a prompt representation database.
-A key is the (text, its children, an ID for the weights ID, an ID for the tokenizer) and
-the value is the model's representation of the text conditional on its children.
+A key is the (text, its parents, an ID for the weights ID, an ID for the tokenizer) and
+the value is the model's representation of the text conditional on its parents. It could
+be a trie.
 
 
 ## Motivation
@@ -69,7 +70,7 @@ texts[-1].model_repr[1].logits[:, -1, :]
 ## Installation
 
 ```
-python -m pip install git+https://github.com/kddubey/backprompt
+python -m pip install git+https://github.com/kddubey/backprompt.git
 ```
 
 
