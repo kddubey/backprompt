@@ -108,6 +108,8 @@ pytest
 <summary>Research</summary>
 
 - [ ] What's the computational complexity of using past keys and values wrt # tokens?
+- [ ] Do few-shot prompts exhibit interesting independencies? If so, one could construct
+  prompts using different examples on the fly.
 - [ ] What's it gonna take to create a DB? It'd be (a non-character-level) trie with a
   key-value interface
 
